@@ -1,0 +1,11 @@
+#5.0.0
+> project v500
+> package
+$ exists 5.0.0/target/scala-2.11/resource_managed/main/mcmod.info
+> check
+
+#4.1.0
+> project v410
+> package
+$ exists 4.1.0/target/scala-2.11/resource_managed/main/mcmod.info
+> check
