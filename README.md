@@ -1,0 +1,35 @@
+# sbt-spongyinfo
+
+sbt-spongyinfo is a sbt plugin that makes making plugins for Sponge easier and less tedious, saving you time wondering why your plugin isn't being detected correctly.
+
+## Features
+* Creates a dependency on on SpongeAPI automatically
+* Allows you to easily change the API version for a project
+* Automatically generates the `mcmod.info` file for you, based on information like the project id, name, version and so on.
+
+## Usage
+
+To just roll with the default settings, simply enable the plugin for the project, like so `enablePlugins(SpongePlugin)`.
+
+To set the Sponge version, use the key named `spongeApiVersion`. For example, to set the Sponge to 4.1.0, use `spongeApiVersion := "4.1.0"`. The default is currently `5.0.0-SNAPSHOT`.
+
+To set the information used to create the `mcmod.info`, use the key named `spongePluginInfo`. Example:
+```scala
+spongePluginInfo := PluginInfo(
+  id               = "myplugin",
+  name             = Some("MyPlugin"),
+  version          = Some("9.9.999"),
+  description      = Some("My special plugin"),
+  url              = Some("mywebsite.net"),
+  minecraftVersion = Some("1.10.2"),
+  authors          = Seq("Katrix"),
+  dependencies     = Set(DependencyInfo(id =  "myotherplugin")),
+  loadBefore       = Set(DependencyInfo(id = "optionalplugin", version = Some("0.0.1"))),
+  loadAfter        = Set(DependencyInfo(id = "afterthis"))
+)
+```
+All fields besides `id` are optional.
+
+If you don't want a `mcmod.info` file created for a project, for example if it is a shared project, you can easily specify this like this `spongeMetaCreate := false`.
+
+If you want to manually create a `mcmod.info` file, run `spongeMetaFile`.
