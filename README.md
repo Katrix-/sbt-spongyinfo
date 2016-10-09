@@ -2,6 +2,12 @@
 
 sbt-spongyinfo is a sbt plugin that makes making plugins for Sponge easier and less tedious, saving you time wondering why your plugin isn't being detected correctly.
 
+To add sbt-spongyinfo to your project, add this to your `plugins.sbt`
+
+```scala
+addSbtPlugin("net.katsstuff" % "sbt-spongyinfo" % "1.0")
+```
+
 ## Features
 * Creates a dependency on on SpongeAPI automatically
 * Allows you to easily change the API version for a project
@@ -12,6 +18,33 @@ sbt-spongyinfo is a sbt plugin that makes making plugins for Sponge easier and l
 To just roll with the default settings, simply enable the plugin for the project, like so `enablePlugins(SpongePlugin)`.
 
 To set the Sponge version, use the key named `spongeApiVersion`. For example, to set the Sponge to 4.1.0, use `spongeApiVersion := "4.1.0"`. The default is currently `5.0.0-SNAPSHOT`.
+
+sbt-spongyinfo will try to use information it can find about the project to generate a sensible `mcmod.info` file. Given this project here:
+
+```scala
+lazy val mymod = (project in file(".")).enablePlugins(SpongePlugin).settings(
+	scalaVersion := "2.11.8",
+	name := "MyMod",
+	version := "1.0",
+	description := "An example project to show of sbt-spongyinfo",
+	homepage := Some(url("http://mywebsite.net"))
+)
+```
+
+it will generate this `mcmod.info` file:
+
+```json
+[
+    {
+        "modid": "mymod",
+        "name": "MyMod",
+        "version": "1.0",
+        "description": "An example project to show of sbt-spongyinfo",
+        "url": "http://mywebsite.net"
+    }
+]
+
+```
 
 To set the information used to create the `mcmod.info`, use the key named `spongePluginInfo`. Example:
 ```scala
