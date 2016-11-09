@@ -33,7 +33,7 @@ object SpongePlugin extends AutoPlugin {
 
 	lazy val baseSettings = Seq[Setting[_]](
 		spongeMetaCreate := true,
-		spongeApiVersion := "5.0.0-SNAPSHOT",
+		spongeApiVersion := "5.0.0",
 		spongePluginInfo := PluginInfo(
 			id = thisProject.value.id,
 			name = Some(name.value),

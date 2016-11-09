@@ -35,7 +35,8 @@ case class PluginInfo(
 		authors: Seq[String] = Nil,
 		dependencies: Set[DependencyInfo] = Set(),
 		loadBefore: Set[DependencyInfo] = Set(),
-		loadAfter: Set[DependencyInfo] = Set()) {
+		loadAfter: Set[DependencyInfo] = Set(),
+		extra: Map[String, _] = Map()) {
 
 	def toSponge: PluginMetadata = {
 		val metadata = new PluginMetadata(id)
@@ -48,6 +49,7 @@ case class PluginInfo(
 		dependencies.foreach(d => metadata.addRequiredDependency(d.toSponge))
 		loadBefore.foreach(d => metadata.loadBefore(d.toSponge))
 		loadAfter.foreach(d => metadata.loadAfter(d.toSponge))
+		extra.foreach(tuple => metadata.setExtension(tuple._1, tuple._2))
 		metadata
 	}
 }
@@ -64,7 +66,8 @@ object PluginInfo {
 			authors = spongeMeta.getAuthors.asScala,
 			dependencies = Set(spongeMeta.getRequiredDependencies.asScala.map(DependencyInfo(_)).toSeq: _*),
 			loadBefore = Set(spongeMeta.getLoadBefore.asScala.map(DependencyInfo(_)).toSeq: _*),
-			loadAfter = Set(spongeMeta.getLoadAfter.asScala.map(DependencyInfo(_)).toSeq: _*)
+			loadAfter = Set(spongeMeta.getLoadAfter.asScala.map(DependencyInfo(_)).toSeq: _*),
+			extra = Map(spongeMeta.getExtensions.asScala.toSeq: _*)
 		)
 	}
 }
