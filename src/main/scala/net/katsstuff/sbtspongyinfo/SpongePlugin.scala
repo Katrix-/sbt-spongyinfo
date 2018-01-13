@@ -27,37 +27,35 @@ import sbt._
 
 object SpongePlugin extends AutoPlugin {
 
-	override def requires = plugins.JvmPlugin
-	val autoImport: SpongeSbtImports.type = SpongeSbtImports
-	import autoImport._
+  override def requires = plugins.JvmPlugin
+  val autoImport: SpongeSbtImports.type = SpongeSbtImports
+  import autoImport._
 
-	lazy val baseSettings: Seq[Setting[_]] = Seq[Setting[_]](
-		spongeMetaCreate := true,
-		spongeApiVersion := "7.0.0",
-		spongePluginInfo := PluginInfo(
-			id = thisProject.value.id,
-			name = Some(name.value),
-			version = Some(version.value),
-			description = Some(description.value),
-			url = homepage.value.map(_.toString)
-		),
-		spongeMetaFile := generateMcModInfo((resourceManaged in Compile).value / "mcmod.info", spongePluginInfo.value),
+  lazy val baseSettings: Seq[Setting[_]] = Seq[Setting[_]](
+    spongeMetaCreate := true,
+    spongeApiVersion := "7.0.0",
+    spongePluginInfo := PluginInfo(
+      id = thisProject.value.id,
+      name = Some(name.value),
+      version = Some(version.value),
+      description = Some(description.value),
+      url = homepage.value.map(_.toString)
+    ),
+    spongeMetaFile := generateMcModInfo((resourceManaged in Compile).value / "mcmod.info", spongePluginInfo.value),
+    resourceGenerators in Compile += Def.task {
+      if (spongeMetaCreate.value) {
+        Seq(generateMcModInfo((resourceManaged in Compile).value / "mcmod.info", spongePluginInfo.value))
+      } else Seq()
+    }.taskValue,
+    resolvers += SpongeRepo,
+    libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided
+  )
 
-		resourceGenerators in Compile += Def.task {
-			if(spongeMetaCreate.value) {
-				Seq(generateMcModInfo((resourceManaged in Compile).value / "mcmod.info", spongePluginInfo.value))
-			} else Seq()
-		}.taskValue,
+  override def projectSettings: Seq[Setting[_]] = baseSettings
 
-		resolvers += SpongeRepo,
-		libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided
-	)
-
-	override def projectSettings: Seq[Setting[_]] = baseSettings
-
-	def generateMcModInfo(file: File, plugin: PluginInfo): File = {
-		file.getParentFile.mkdirs()
-		McModInfo.DEFAULT.write(file.toPath, plugin.toSponge)
-		file
-	}
+  def generateMcModInfo(file: File, plugin: PluginInfo): File = {
+    file.getParentFile.mkdirs()
+    McModInfo.DEFAULT.write(file.toPath, plugin.toSponge)
+    file
+  }
 }

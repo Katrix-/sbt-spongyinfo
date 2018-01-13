@@ -25,18 +25,18 @@ import sbt._
 
 object SpongeSbtImports {
 
-	final val SpongeRepo = "SpongePowered" at "https://repo.spongepowered.org/maven"
+  final val SpongeRepo = "SpongePowered" at "https://repo.spongepowered.org/maven"
 
-	final val SpongePlugin = sbtspongyinfo.SpongePlugin
+  final val SpongePlugin = sbtspongyinfo.SpongePlugin
 
-	final val PluginInfo = sbtspongyinfo.PluginInfo
-	type PluginInfo = sbtspongyinfo.PluginInfo
+  final val PluginInfo = sbtspongyinfo.PluginInfo
+  type PluginInfo = sbtspongyinfo.PluginInfo
 
-	final val DependencyInfo = sbtspongyinfo.DependencyInfo
-	type DependencyInfo = sbtspongyinfo.DependencyInfo
+  final val DependencyInfo = sbtspongyinfo.DependencyInfo
+  type DependencyInfo = sbtspongyinfo.DependencyInfo
 
-	lazy val spongeApiVersion = settingKey[String]("The version of sponge to use")
-	lazy val spongePluginInfo = settingKey[PluginInfo]("What info to include in the mcmod.info file")
-	lazy val spongeMetaCreate = settingKey[Boolean]("If the meta mcmod.info file should be created")
-	lazy val spongeMetaFile   = taskKey[File]("Creates a mcmod.info file")
+  lazy val spongeApiVersion = settingKey[String]("The version of sponge to use")
+  lazy val spongePluginInfo = settingKey[PluginInfo]("What info to include in the mcmod.info file")
+  lazy val spongeMetaCreate = settingKey[Boolean]("If the meta mcmod.info file should be created")
+  lazy val spongeMetaFile   = taskKey[File]("Creates a mcmod.info file")
 }
