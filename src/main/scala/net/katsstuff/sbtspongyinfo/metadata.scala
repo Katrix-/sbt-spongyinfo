@@ -22,64 +22,77 @@ package net.katsstuff.sbtspongyinfo
 
 import scala.collection.JavaConverters._
 
-import org.spongepowered.plugin.meta.PluginMetadata
-import org.spongepowered.plugin.meta.PluginMetadata.{Dependency => SpongeDependency}
+import org.spongepowered.plugin.meta.{PluginDependency, PluginMetadata}
 
 case class PluginInfo(
-		id: String,
-		name: Option[String] = None,
-		version: Option[String] = None,
-		description: Option[String] = None,
-		url: Option[String] = None,
-		minecraftVersion: Option[String] = None,
-		authors: Seq[String] = Nil,
-		dependencies: Set[DependencyInfo] = Set(),
-		loadBefore: Set[DependencyInfo] = Set(),
-		loadAfter: Set[DependencyInfo] = Set(),
-		extra: Map[String, _] = Map()) {
+    id: String,
+    name: Option[String] = None,
+    version: Option[String] = None,
+    description: Option[String] = None,
+    url: Option[String] = None,
+    authors: Seq[String] = Nil,
+    dependencies: Set[DependencyInfo] = Set(),
+    extra: Map[String, _] = Map()
+) {
 
-	def toSponge: PluginMetadata = {
-		val metadata = new PluginMetadata(id)
-		metadata.setName(name.orNull)
-		metadata.setVersion(version.orNull)
-		metadata.setDescription(description.orNull)
-		metadata.setUrl(url.orNull)
-		metadata.setMinecraftVersion(minecraftVersion.orNull)
-		authors.foreach(metadata.addAuthor)
-		dependencies.foreach(d => metadata.addRequiredDependency(d.toSponge))
-		loadBefore.foreach(d => metadata.loadBefore(d.toSponge))
-		loadAfter.foreach(d => metadata.loadAfter(d.toSponge))
-		extra.foreach(tuple => metadata.setExtension(tuple._1, tuple._2))
-		metadata
-	}
+  def toSponge: PluginMetadata = {
+    val metadata = new PluginMetadata(id)
+    metadata.setName(name.orNull)
+    metadata.setVersion(version.orNull)
+    metadata.setDescription(description.orNull)
+    metadata.setUrl(url.orNull)
+    authors.foreach(metadata.addAuthor)
+    dependencies.foreach(d => metadata.addDependency(d.toSponge))
+    extra.foreach(tuple => metadata.setExtension(tuple._1, tuple._2))
+    metadata
+  }
 }
 object PluginInfo {
 
-	def apply(spongeMeta: PluginMetadata): PluginInfo = {
-		new PluginInfo(
-			id = spongeMeta.getId,
-			name = Option(spongeMeta.getName),
-			version = Option(spongeMeta.getVersion),
-			description = Option(spongeMeta.getDescription),
-			url = Option(spongeMeta.getUrl),
-			minecraftVersion = Option(spongeMeta.getMinecraftVersion),
-			authors = spongeMeta.getAuthors.asScala,
-			dependencies = Set(spongeMeta.getRequiredDependencies.asScala.map(DependencyInfo(_)).toSeq: _*),
-			loadBefore = Set(spongeMeta.getLoadBefore.asScala.map(DependencyInfo(_)).toSeq: _*),
-			loadAfter = Set(spongeMeta.getLoadAfter.asScala.map(DependencyInfo(_)).toSeq: _*),
-			extra = Map(spongeMeta.getExtensions.asScala.toSeq: _*)
-		)
-	}
+  def apply(spongeMeta: PluginMetadata): PluginInfo = {
+    new PluginInfo(
+      id = spongeMeta.getId,
+      name = Option(spongeMeta.getName),
+      version = Option(spongeMeta.getVersion),
+      description = Option(spongeMeta.getDescription),
+      url = Option(spongeMeta.getUrl),
+      authors = spongeMeta.getAuthors.asScala,
+      dependencies = spongeMeta.getDependencies.asScala.map(DependencyInfo.apply).toSet,
+      extra = Map(spongeMeta.getExtensions.asScala.toSeq: _*)
+    )
+  }
 }
 
-case class DependencyInfo(id: String, version: Option[String] = None) {
+sealed trait LoadOrder
+object LoadOrder {
+  case object None   extends LoadOrder
+  case object Before extends LoadOrder
+  case object After  extends LoadOrder
 
-	def toSponge: SpongeDependency = new SpongeDependency(id, version.orNull)
+  def toSponge(loadOrder: LoadOrder): PluginDependency.LoadOrder = loadOrder match {
+    case None   => PluginDependency.LoadOrder.NONE
+    case Before => PluginDependency.LoadOrder.BEFORE
+    case After  => PluginDependency.LoadOrder.AFTER
+  }
+
+  def fromSponge(loadOrder: PluginDependency.LoadOrder): LoadOrder = loadOrder match {
+    case PluginDependency.LoadOrder.NONE   => None
+    case PluginDependency.LoadOrder.BEFORE => Before
+    case PluginDependency.LoadOrder.AFTER  => After
+  }
+}
+case class DependencyInfo(loadOrder: LoadOrder, id: String, version: Option[String] = None, optional: Boolean) {
+
+  def toSponge: PluginDependency = new PluginDependency(LoadOrder.toSponge(loadOrder), id, version.orNull, optional)
 }
 
 object DependencyInfo {
 
-	def apply(spongeDependency: SpongeDependency): DependencyInfo = {
-		new DependencyInfo(spongeDependency.getId, Option(spongeDependency.getVersion))
-	}
+  def apply(spongeDependency: PluginDependency): DependencyInfo =
+    new DependencyInfo(
+      LoadOrder.fromSponge(spongeDependency.getLoadOrder),
+      spongeDependency.getId,
+      Option(spongeDependency.getVersion),
+      spongeDependency.isOptional
+    )
 }

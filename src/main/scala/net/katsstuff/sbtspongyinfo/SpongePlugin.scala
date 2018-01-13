@@ -28,12 +28,12 @@ import sbt._
 object SpongePlugin extends AutoPlugin {
 
 	override def requires = plugins.JvmPlugin
-	val autoImport = SpongeSbtImports
+	val autoImport: SpongeSbtImports.type = SpongeSbtImports
 	import autoImport._
 
-	lazy val baseSettings = Seq[Setting[_]](
+	lazy val baseSettings: Seq[Setting[_]] = Seq[Setting[_]](
 		spongeMetaCreate := true,
-		spongeApiVersion := "5.0.0",
+		spongeApiVersion := "7.0.0",
 		spongePluginInfo := PluginInfo(
 			id = thisProject.value.id,
 			name = Some(name.value),
@@ -53,7 +53,7 @@ object SpongePlugin extends AutoPlugin {
 		libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided
 	)
 
-	override def projectSettings = baseSettings
+	override def projectSettings: Seq[Setting[_]] = baseSettings
 
 	def generateMcModInfo(file: File, plugin: PluginInfo): File = {
 		file.getParentFile.mkdirs()

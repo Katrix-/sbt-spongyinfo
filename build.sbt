@@ -1,12 +1,11 @@
 name := "sbt-spongyinfo"
 organization := "net.katsstuff"
-version := "1.0"
+version := "1.1-SNAPSHOT"
 
 sbtPlugin := true
 
 resolvers += "SpongePowered" at "http://repo.spongepowered.org/maven"
-libraryDependencies += "org.spongepowered" % "plugin-meta" % "0.2"
-libraryDependencies += "com.google.code.findbugs" % "jsr305" % "1.3.+"
+libraryDependencies += "org.spongepowered" % "plugin-meta" % "0.4.1"
 
 licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
