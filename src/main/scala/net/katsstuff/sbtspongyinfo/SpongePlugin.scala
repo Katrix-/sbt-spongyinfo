@@ -20,14 +20,20 @@
  */
 package net.katsstuff.sbtspongyinfo
 
+import java.io.IOException
+
 import org.spongepowered.plugin.meta.McModInfo
 
+import com.typesafe.sbt.SbtPgp
+
+import okhttp3.{MultipartBody, OkHttpClient, Request, RequestBody, Response}
 import sbt.Keys._
-import sbt._
+import sbt.{Def, _}
+import sbtassembly.AssemblyPlugin
 
 object SpongePlugin extends AutoPlugin {
 
-  override def requires = plugins.JvmPlugin
+  override def requires = plugins.JvmPlugin && SbtPgp && AssemblyPlugin
   val autoImport: SpongeSbtImports.type = SpongeSbtImports
   import autoImport._
 
@@ -48,7 +54,12 @@ object SpongePlugin extends AutoPlugin {
       } else Seq()
     }.taskValue,
     resolvers += SpongeRepo,
-    libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided
+    libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided,
+    oreUrl := "https://ore.spongepowered.org",
+    oreRecommended := true,
+    oreChannel := "Release",
+    oreApiKey := None,
+    oreDeply := signFatjar.value
   )
 
   override def projectSettings: Seq[Setting[_]] = baseSettings
@@ -58,4 +69,52 @@ object SpongePlugin extends AutoPlugin {
     McModInfo.DEFAULT.write(file.toPath, plugin.toSponge)
     file
   }
+
+  val signFatjar = Def.taskDyn {
+    val fatjar       = AssemblyPlugin.autoImport.assembly.value
+    val r            = SbtPgp.autoImport.PgpKeys.pgpSigner.value
+    val s            = streams.value
+    val gpgExtension = com.typesafe.sbt.pgp.gpgExtension
+    val signature    = r.sign(fatjar, new File(fatjar.getAbsolutePath + gpgExtension), s)
+    deploy(fatjar, signature, s)
+  }
+
+  def deploy(jar: File, signature: File, s: TaskStreams): Def.Initialize[Task[(sbt.File, sbt.File)]] =
+    Def.task {
+      require(oreApiKey.value.isDefined, "Ore API key needs to be set")
+      val pluginInfo = spongePluginInfo.value
+      require(pluginInfo.version.isDefined, "Plugin version can't be empty")
+
+      val projectUrl = s"${oreUrl.value}/api/projects/${pluginInfo.id}/versions/${pluginInfo.version.get}"
+
+      val body = new MultipartBody.Builder()
+        .addFormDataPart("apiKey", oreApiKey.value.get)
+        .addFormDataPart("channel", oreChannel.value)
+        .addFormDataPart("recommended", oreRecommended.value.toString)
+        .addFormDataPart("pluginFile", jar.name, RequestBody.create(null, jar))
+        .addFormDataPart("pluginSig", signature.name, RequestBody.create(null, signature))
+        .build()
+
+      val request = new Request.Builder().url(projectUrl).post(body).build()
+
+      val client = new OkHttpClient()
+      var response: Response = null
+      try {
+        s.log.info(s"Deploying ${jar.name} to $projectUrl")
+        response = client.newCall(request).execute()
+        val status  = response.code()
+        val created = status == 201
+        if (!created) {
+          throw new IOException(s"$status Could not deploy plugin. ${response.message()}")
+        }
+        s.log.debug(response.body().string())
+        s.log.info(s"Successfully deployed ${jar.name} to Ore")
+      } finally {
+        if (response != null) {
+          response.close()
+        }
+      }
+
+      (jar, signature)
+    } tag (Tags.Publish, Tags.Network)
 }
