@@ -5,19 +5,20 @@ sbt-spongyinfo is a sbt plugin that makes making plugins for Sponge easier and l
 To add sbt-spongyinfo to your project, add this to your `plugins.sbt`
 
 ```scala
-addSbtPlugin("net.katsstuff" % "sbt-spongyinfo" % "1.0")
+addSbtPlugin("net.katsstuff" % "sbt-spongyinfo" % "1.1")
 ```
 
 ## Features
 * Creates a dependency on on SpongeAPI automatically
 * Allows you to easily change the API version for a project
 * Automatically generates the `mcmod.info` file for you, based on information like the project id, name, version and so on.
+* Deploy your plugin to Ore from SBT
 
 ## Usage
 
 To just roll with the default settings, simply enable the plugin for the project, like so `enablePlugins(SpongePlugin)`.
 
-To set the Sponge version, use the key named `spongeApiVersion`. For example, to set the Sponge to 4.1.0, use `spongeApiVersion := "4.1.0"`. The default is currently `5.0.0-SNAPSHOT`.
+To set the Sponge version, use the key named `spongeApiVersion`. For example, to set the Sponge to 7.0.0, use `spongeApiVersion := "7.0.0"`. The default is currently `7.0.0`.
 
 sbt-spongyinfo will try to use information it can find about the project to generate a sensible `mcmod.info` file. Given this project here:
 
@@ -54,11 +55,15 @@ spongePluginInfo := PluginInfo(
   version          = Some("9.9.999"),
   description      = Some("My special plugin"),
   url              = Some("mywebsite.net"),
-  minecraftVersion = Some("1.10.2"),
   authors          = Seq("Katrix"),
-  dependencies     = Set(DependencyInfo(id =  "myotherplugin")),
-  loadBefore       = Set(DependencyInfo(id = "optionalplugin", version = Some("0.0.1"))),
-  loadAfter        = Set(DependencyInfo(id = "afterthis"))
+  dependencies     = Set(
+    DependencyInfo(
+      loadOrder = LoadOrder.None, 
+      id = "myotherplugin", 
+      version = Some("1.1.0"), 
+      optional = false
+    )
+  )
 )
 ```
 All fields besides `id` are optional.
