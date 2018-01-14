@@ -58,8 +58,8 @@ object SpongePlugin extends AutoPlugin {
     oreUrl := "https://ore.spongepowered.org",
     oreRecommended := true,
     oreChannel := "Release",
-    oreApiKey := None,
-    oreDeply := signFatjar.value
+    oreDeploymentKey := None,
+    oreDeploy := signFatjar.value
   )
 
   override def projectSettings: Seq[Setting[_]] = baseSettings
@@ -81,14 +81,17 @@ object SpongePlugin extends AutoPlugin {
 
   def deploy(jar: File, signature: File, s: TaskStreams): Def.Initialize[Task[(sbt.File, sbt.File)]] =
     Def.task {
-      require(oreApiKey.value.isDefined, "Ore API key needs to be set")
+      require(oreDeploymentKey.value.isDefined, "Ore API key needs to be set")
       val pluginInfo = spongePluginInfo.value
       require(pluginInfo.version.isDefined, "Plugin version can't be empty")
 
-      val projectUrl = s"${oreUrl.value}/api/projects/${pluginInfo.id}/versions/${pluginInfo.version.get}"
+      val oreUrlValue = oreUrl.value
+      val usedUrl     = if (oreUrlValue.endsWith("/")) oreUrlValue.dropRight(1) else oreUrlValue
+      val projectUrl  = s"$usedUrl/api/projects/${pluginInfo.id}/versions/${pluginInfo.version.get}"
 
       val body = new MultipartBody.Builder()
-        .addFormDataPart("apiKey", oreApiKey.value.get)
+        .setType(MultipartBody.FORM)
+        .addFormDataPart("apiKey", oreDeploymentKey.value.get)
         .addFormDataPart("channel", oreChannel.value)
         .addFormDataPart("recommended", oreRecommended.value.toString)
         .addFormDataPart("pluginFile", jar.name, RequestBody.create(null, jar))
@@ -105,7 +108,8 @@ object SpongePlugin extends AutoPlugin {
         val status  = response.code()
         val created = status == 201
         if (!created) {
-          throw new IOException(s"$status Could not deploy plugin. ${response.message()}")
+          val body = response.body().string()
+          throw new IOException(s"$status Could not deploy plugin. ${response.message()}\n$body")
         }
         s.log.debug(response.body().string())
         s.log.info(s"Successfully deployed ${jar.name} to Ore")

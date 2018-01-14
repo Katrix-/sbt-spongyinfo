@@ -40,10 +40,10 @@ object SpongeSbtImports {
   lazy val spongeMetaCreate = settingKey[Boolean]("If the meta mcmod.info file should be created")
   lazy val spongeMetaFile   = taskKey[File]("Creates a mcmod.info file")
 
-  lazy val oreUrl = settingKey[String]("The url to use for Ore")
-  lazy val oreRecommended =
+  lazy val oreUrl           = settingKey[String]("The url to use for Ore")
+  lazy val oreRecommended   =
     settingKey[Boolean]("If the plugin should be set as the recommended plugin when uploaded to Ore")
-  lazy val oreChannel = settingKey[String]("The channel to upload to when uploading a plugin to Ore")
-  lazy val oreApiKey  = settingKey[Option[String]]("An API key used to export a project to Ore")
-  lazy val oreDeply   = taskKey[(File, File)]("Uploads a plugin to Ore")
+  lazy val oreChannel       = settingKey[String]("The channel to upload to when uploading a plugin to Ore")
+  lazy val oreDeploymentKey = settingKey[Option[String]]("An API key used to export a project to Ore")
+  lazy val oreDeploy        = taskKey[(File, File)]("Uploads a plugin to Ore")
 }
