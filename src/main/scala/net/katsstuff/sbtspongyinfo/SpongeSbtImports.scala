@@ -35,6 +35,9 @@ object SpongeSbtImports {
   final val DependencyInfo = sbtspongyinfo.DependencyInfo
   type DependencyInfo = sbtspongyinfo.DependencyInfo
 
+  final val LoadOrder = sbtspongyinfo.LoadOrder
+  type LoadOrder = sbtspongyinfo.LoadOrder
+
   lazy val spongeApiVersion = settingKey[String]("The version of sponge to use")
   lazy val spongePluginInfo = settingKey[PluginInfo]("What info to include in the mcmod.info file")
   lazy val spongeMetaCreate = settingKey[Boolean]("If the meta mcmod.info file should be created")
