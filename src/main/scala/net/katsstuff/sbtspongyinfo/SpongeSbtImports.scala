@@ -22,6 +22,7 @@ package net.katsstuff.sbtspongyinfo
 
 import net.katsstuff.sbtspongyinfo
 import sbt._
+import sbt.Keys._
 import sbtcrossproject.CrossProject
 
 object SpongeSbtImports {
@@ -41,6 +42,14 @@ object SpongeSbtImports {
 
   final val SpongePlatform = sbtspongyinfo.SpongePlatform
   type SpongePlatform = sbtspongyinfo.SpongePlatform.type
+
+  //TODO: Only approved plugins
+  def oreDependency(id: String, version: String): ModuleID =
+    "ore" % id % version from s"https://ore.spongepowered.org/api/projects/$id/versions/$version/download"
+
+  lazy val SpongeVanilla = config("spongeVanilla").extend(Compile)
+  lazy val SpongeForge   = config("spongeForge").extend(Compile)
+  lazy val ForgeInstall   = config("forgeinstall").hide
 
   lazy val spongeApiVersion = settingKey[String]("The version of sponge to use")
   lazy val spongePluginInfo = settingKey[PluginInfo]("What info to include in the mcmod.info file")
@@ -64,4 +73,9 @@ object SpongeSbtImports {
     def spongeSettings(version: String)(ss: Def.SettingsDefinition*): CrossProject =
       project.configurePlatform(SpongePlatform(version))(_.settings(ss: _*))
   }
+
+  lazy val spongeForgeVersion     = settingKey[String]("The forge version to use")
+  lazy val spongeGenerateForgeRun = taskKey[Classpath]("Generates the needed files for forge to run")
+  lazy val spongeMinecraftVersion = settingKey[String]("The minecraft version to use")
+  lazy val spongeFullVersion      = settingKey[String]("The full sponge version to use")
 }

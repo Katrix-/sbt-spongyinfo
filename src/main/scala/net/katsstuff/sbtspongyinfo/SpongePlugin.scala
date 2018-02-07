@@ -22,16 +22,22 @@ package net.katsstuff.sbtspongyinfo
 
 import java.io.IOException
 
+import scala.sys.process.Process
+import scala.util.{Failure, Success}
+
 import org.spongepowered.plugin.meta.McModInfo
 
 import com.typesafe.sbt.SbtPgp
 
-import okhttp3.{MultipartBody, OkHttpClient, Request, RequestBody, Response}
+import okhttp3.{HttpUrl, MultipartBody, OkHttpClient, Request, RequestBody, Response}
 import sbt.Keys._
 import sbt.{Def, _}
 import sbtassembly.AssemblyPlugin
+import sjsonnew.shaded.scalajson.ast.unsafe.{JArray, JField, JObject, JString}
 
 object SpongePlugin extends AutoPlugin {
+
+  private val client = new OkHttpClient()
 
   override def requires = plugins.JvmPlugin && SbtPgp && AssemblyPlugin
   val autoImport: SpongeSbtImports.type = SpongeSbtImports
@@ -66,7 +72,56 @@ object SpongePlugin extends AutoPlugin {
     oreDeploy := Some(signJar.value),
   )
 
-  override def projectSettings: Seq[Setting[_]] = spongeSettings ++ oreSettings
+  override def projectConfigurations: Seq[Configuration] = Seq(SpongeVanilla, SpongeForge, ForgeInstall)
+
+  lazy val spongeVanillaSettings: Seq[Setting[_]] = inConfig(SpongeVanilla) {
+    Seq(
+      mainClass := Some("org.spongepowered.server.launch.VersionCheckingMain"),
+      fork in run := true,
+      baseDirectory in run := file("runVanilla"),
+      spongeFullVersion := currentSpongeVanillaVersion(spongeApiVersion.value, spongeMinecraftVersion.value),
+      libraryDependencies += "org.spongepowered" % "spongevanilla" % spongeFullVersion.value classifier "dev"
+    )
+  }
+
+  lazy val spongeForgeSettings: Seq[Setting[_]] = inConfig(SpongeForge) {
+    Seq(
+      unmanagedClasspath := Classpaths.concat(unmanagedClasspath, spongeGenerateForgeRun).value,
+      mainClass := Some("net.minecraftforge.fml.relauncher.ServerLaunchWrapper"),
+      fork in run := true,
+      spongeGenerateForgeRun := Def.task {
+        val runDir   = (baseDirectory in run).value
+        val forgeJar = s"forge-${spongeMinecraftVersion.value}-${spongeForgeVersion.value}-universal.jar"
+
+        if (!(runDir / forgeJar).exists()) {
+          runForgeInstaller(
+            runDir,
+            (javaOptions in ForgeInstall).value,
+            (managedClasspath in ForgeInstall).value.map(_.data),
+            streams.value.log
+          )
+        }
+
+        Seq(runDir / forgeJar).classpath
+      }.value,
+      baseDirectory in run := file("runForge"),
+      spongeFullVersion := currentSpongeForgeVersion(spongeApiVersion.value, spongeForgeVersion.value),
+      libraryDependencies += "org.spongepowered" % "spongeforge" % spongeFullVersion.value classifier "dev",
+      resolvers += "Forge" at "https://files.minecraftforge.net/maven",
+      libraryDependencies += {
+        val minecraftVersion = (spongeMinecraftVersion in SpongeForge).value
+        val fullForgeVersion = (spongeForgeVersion in SpongeForge).value
+
+        "net.minecraftforge" % "forge" % s"$minecraftVersion-$fullForgeVersion" classifier "installer"
+      }
+    )
+  }
+
+  lazy val forgeInstallSettings: Seq[Setting[_]] = inConfig(ForgeInstall) {
+    Seq(managedClasspath := Classpaths.managedJars(ForgeInstall, (classpathTypes in ForgeInstall).value, update.value))
+  }
+
+  override def projectSettings: Seq[Setting[_]] = spongeSettings ++ oreSettings ++ spongeVanillaSettings ++ spongeForgeSettings ++ forgeInstallSettings
 
   def generateMcModInfo(file: File, plugin: PluginInfo): File = {
     file.getParentFile.mkdirs()
@@ -109,7 +164,6 @@ object SpongePlugin extends AutoPlugin {
 
       val request = new Request.Builder().url(projectUrl).post(body).build()
 
-      val client = new OkHttpClient()
       var response: Response = null
       try {
         logger.log.info(s"Deploying ${jar.name} to $projectUrl")
@@ -130,4 +184,83 @@ object SpongePlugin extends AutoPlugin {
 
       (jar, signature)
     } tag (Tags.Publish, Tags.Network)
+
+  private def removeSnapshot(version: String): String =
+    if (version.endsWith("-SNAPSHOT")) version.substring(0, version.length - 9) else version
+
+  def downloadApiUrl(platform: String): HttpUrl.Builder =
+    HttpUrl
+      .parse(s"https://dl-api.spongepowered.org/v1/org.spongepowered/$platform/downloads")
+      .newBuilder()
+      .addQueryParameter("limit", "1")
+
+  def currentSpongeVanillaVersion(spongeApiVersion: String, minecraftVersion: String): String = {
+    val spongeVersion = removeSnapshot(spongeApiVersion)
+    val bleeding      = spongeApiVersion != spongeVersion
+
+    val url = downloadApiUrl("spongevanilla")
+      .addQueryParameter("type", if (bleeding) "bleeding" else "stable")
+      .addQueryParameter("version", spongeVersion)
+      .addQueryParameter("minecraft", minecraftVersion)
+      .build()
+
+    findVersion(url)
+  }
+
+  def currentSpongeForgeVersion(spongeApiVersion: String, fullForgeVersion: String): String = {
+    val spongeVersion = removeSnapshot(spongeApiVersion)
+    val bleeding      = spongeApiVersion != spongeVersion
+
+    val url = downloadApiUrl("spongeforge")
+      .addQueryParameter("type", if (bleeding) "bleeding" else "stable")
+      .addQueryParameter("version", spongeVersion)
+      .addQueryParameter("forge", fullForgeVersion)
+      .build()
+
+    findVersion(url)
+  }
+
+  def findVersion(url: HttpUrl): String = {
+    var response: Response = null
+    try {
+      response = client.newCall(new Request.Builder().url(url).build()).execute()
+      val body = response.body().string()
+      if (response.isSuccessful) {
+        sjsonnew.support.scalajson.unsafe.Parser.parseFromString(body) match {
+          case Success(JArray(Array(JObject(fields)))) =>
+            fields
+              .collectFirst {
+                case JField("version", JString(v)) => v
+              }
+              .getOrElse {
+                throw new IOException("Could not find Sponge version that matched the specified criteria")
+              }
+          case Success(_) => throw new IOException("Unexpected response from Sponge download API")
+          case Failure(e) =>
+            throw new IOException("Failed to find sponge platform dependency", e)
+        }
+      } else
+        sys.error(s"Unsuccessful call to Sponge download API: ${response.code()} ${response.message()}\n$body")
+    } finally {
+      if (response != null) {
+        response.close()
+      }
+    }
+  }
+
+  def runForgeInstaller(installDir: File, javaOptions: Seq[String], classpath: Seq[File], log: Logger): Unit = {
+    require(classpath.nonEmpty, "Can't run the Forge installer with an empty classpath")
+
+    val options = javaOptions ++ Seq(
+      "java",
+      "-cp",
+      Path.makeString(classpath),
+      "net.minecraftforge.installer.SimpleInstaller",
+      "-installServer"
+    )
+    log.info(options.mkString(" "))
+
+    val exitCode = Process(options, installDir) ! log
+    if (exitCode != 0) sys.error("Error while generating forge installation")
+  }
 }
