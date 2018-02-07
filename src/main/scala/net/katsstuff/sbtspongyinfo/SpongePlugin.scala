@@ -59,7 +59,7 @@ object SpongePlugin extends AutoPlugin {
     oreRecommended := true,
     oreChannel := "Release",
     oreDeploymentKey := None,
-    oreDeploy := signFatjar.value
+    oreDeploy := Some(signFatjar.value),
   )
 
   override def projectSettings: Seq[Setting[_]] = baseSettings
