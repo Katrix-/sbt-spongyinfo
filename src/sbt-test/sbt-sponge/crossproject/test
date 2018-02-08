@@ -1,0 +1,13 @@
+> checkGlobal
+
+#5.0.0
+> project myProjectSponge5-0-0
+> package
+$ exists myProject/sponge5.0.0/target/scala-2.12/resource_managed/main/mcmod.info
+> check
+
+#6.0.0
+> project myProjectSponge6-0-0
+> package
+$ exists myProject/sponge6.0.0/target/scala-2.12/resource_managed/main/mcmod.info
+> check
