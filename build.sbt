@@ -1,6 +1,6 @@
 name := "sbt-spongyinfo"
 organization := "net.katsstuff"
-version := "1.2"
+version := "1.3-SNAPSHOT"
 
 description := "Easier Sponge plugins for SBT"
 
@@ -10,6 +10,7 @@ resolvers += "SpongePowered" at "http://repo.spongepowered.org/maven"
 libraryDependencies += "org.spongepowered" % "plugin-meta" % "0.4.1"
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.1.0")
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.6")
+addSbtPlugin("org.portable-scala" % "sbt-crossproject" % "0.3.1")
 
 licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
