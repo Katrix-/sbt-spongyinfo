@@ -1,6 +1,6 @@
 name := "sbt-spongyinfo"
 organization := "net.katsstuff"
-version := "1.3-SNAPSHOT"
+version := "1.3"
 
 description := "Easier Sponge plugins for SBT"
 
