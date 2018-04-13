@@ -50,7 +50,10 @@ object SpongeSbtImports {
   lazy val oreUrl = settingKey[String]("The url to use for Ore")
   lazy val oreRecommended =
     settingKey[Boolean]("If the plugin should be set as the recommended plugin when uploaded to Ore")
-  lazy val oreChannel       = settingKey[String]("The channel to upload to when uploading a plugin to Ore")
+  lazy val oreChannel   = settingKey[String]("The channel to upload to when uploading a plugin to Ore")
+  lazy val oreChangelog = taskKey[Option[String]]("The changelog to send when publishing a plugin to Ore")
+  lazy val oreCreateForumPost =
+    taskKey[Option[Boolean]]("If a forum post should be created when deploying the new version")
   lazy val oreDeploymentKey = settingKey[Option[String]]("An API key used to export a project to Ore")
   lazy val oreDeploy        = taskKey[Option[(File, File)]]("Uploads a plugin to Ore")
 

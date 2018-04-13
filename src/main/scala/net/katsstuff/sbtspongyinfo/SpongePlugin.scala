@@ -58,6 +58,8 @@ object SpongePlugin extends AutoPlugin {
     oreUrl := "https://ore.spongepowered.org",
     oreRecommended := true,
     oreChannel := "Release",
+    oreCreateForumPost := None,
+    oreChangelog := None,
     oreDeploymentKey := None,
     oreDeploy := Some(signFatjar.value),
   )
@@ -89,14 +91,19 @@ object SpongePlugin extends AutoPlugin {
       val usedUrl     = if (oreUrlValue.endsWith("/")) oreUrlValue.dropRight(1) else oreUrlValue
       val projectUrl  = s"$usedUrl/api/projects/${pluginInfo.id}/versions/${pluginInfo.version.get}"
 
-      val body = new MultipartBody.Builder()
-        .setType(MultipartBody.FORM)
-        .addFormDataPart("apiKey", oreDeploymentKey.value.get)
-        .addFormDataPart("channel", oreChannel.value)
-        .addFormDataPart("recommended", oreRecommended.value.toString)
-        .addFormDataPart("pluginFile", jar.name, RequestBody.create(null, jar))
-        .addFormDataPart("pluginSig", signature.name, RequestBody.create(null, signature))
-        .build()
+      val body = {
+        val builder = new MultipartBody.Builder()
+          .setType(MultipartBody.FORM)
+          .addFormDataPart("apiKey", oreDeploymentKey.value.get)
+          .addFormDataPart("channel", oreChannel.value)
+          .addFormDataPart("recommended", oreRecommended.value.toString)
+          .addFormDataPart("pluginFile", jar.name, RequestBody.create(null, jar))
+          .addFormDataPart("pluginSig", signature.name, RequestBody.create(null, signature))
+        oreCreateForumPost.value.foreach(forumPost => builder.addFormDataPart("forumPost", forumPost.toString))
+        oreChangelog.value.foreach(changelog => builder.addFormDataPart("changelog", changelog))
+
+        builder.build()
+      }
 
       val request = new Request.Builder().url(projectUrl).post(body).build()
 
