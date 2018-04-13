@@ -61,7 +61,8 @@ object SpongePlugin extends AutoPlugin {
     oreCreateForumPost := None,
     oreChangelog := None,
     oreDeploymentKey := None,
-    oreDeploy := Some(signFatjar.value),
+    oreDeployFile := AssemblyPlugin.autoImport.assembly.value,
+    oreDeploy := Some(signJar.value),
   )
 
   override def projectSettings: Seq[Setting[_]] = baseSettings
@@ -72,13 +73,13 @@ object SpongePlugin extends AutoPlugin {
     file
   }
 
-  val signFatjar = Def.taskDyn {
-    val fatjar       = AssemblyPlugin.autoImport.assembly.value
+  val signJar = Def.taskDyn {
+    val deployFile   = oreDeployFile.value
     val r            = SbtPgp.autoImport.PgpKeys.pgpSigner.value
     val s            = streams.value
     val gpgExtension = com.typesafe.sbt.pgp.gpgExtension
-    val signature    = r.sign(fatjar, new File(fatjar.getAbsolutePath + gpgExtension), s)
-    deploy(fatjar, signature, s)
+    val signature    = r.sign(deployFile, new File(deployFile.getAbsolutePath + gpgExtension), s)
+    deploy(deployFile, signature, s)
   }
 
   def deploy(jar: File, signature: File, s: TaskStreams): Def.Initialize[Task[(sbt.File, sbt.File)]] =

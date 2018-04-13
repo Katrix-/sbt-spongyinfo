@@ -55,6 +55,7 @@ object SpongeSbtImports {
   lazy val oreCreateForumPost =
     taskKey[Option[Boolean]]("If a forum post should be created when deploying the new version")
   lazy val oreDeploymentKey = settingKey[Option[String]]("An API key used to export a project to Ore")
+  lazy val oreDeployFile    = taskKey[File]("The file which should be deployed to Ore")
   lazy val oreDeploy        = taskKey[Option[(File, File)]]("Uploads a plugin to Ore")
 
   implicit class SpongeCrossProjectOps(private val project: CrossProject) extends AnyVal {
