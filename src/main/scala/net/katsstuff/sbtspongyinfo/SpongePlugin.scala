@@ -59,6 +59,8 @@ object SpongePlugin extends AutoPlugin {
     }.taskValue,
     resolvers += SpongeRepo,
     libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided,
+    spongeVanillaRunInfo := None,
+    spongeForgeRunInfo := None
   )
 
   lazy val oreSettings: Seq[Setting[_]] = Seq(
@@ -74,54 +76,75 @@ object SpongePlugin extends AutoPlugin {
 
   override def projectConfigurations: Seq[Configuration] = Seq(SpongeVanilla, SpongeForge, ForgeInstall)
 
-  lazy val spongeVanillaSettings: Seq[Setting[_]] = inConfig(SpongeVanilla) {
-    Seq(
-      mainClass := Some("org.spongepowered.server.launch.VersionCheckingMain"),
-      fork in run := true,
-      baseDirectory in run := file("runVanilla"),
-      spongeFullVersion := currentSpongeVanillaVersion(spongeApiVersion.value, spongeMinecraftVersion.value),
-      libraryDependencies += "org.spongepowered" % "spongevanilla" % spongeFullVersion.value classifier "dev"
-    )
-  }
+  lazy val spongeVanillaSettings: Seq[Setting[_]] = Seq(
+    fork in (SpongeVanilla, spongeRun) := true,
+    baseDirectory in (SpongeVanilla, spongeRun) := file("runVanilla"),
+    libraryDependencies ++= spongeVanillaRunInfo.value
+      .flatMap(_.spongeVanillaVersion)
+      .map(version => "org.spongepowered" % "spongevanilla" % version % SpongeVanilla classifier "dev")
+      .toList
+  ) ++ inConfig(SpongeVanilla)(Defaults.configSettings) ++ fullRunTask(
+    spongeRun in SpongeVanilla,
+    SpongeVanilla,
+    "org.spongepowered.server.launch.VersionCheckingMain"
+  )
 
-  lazy val spongeForgeSettings: Seq[Setting[_]] = inConfig(SpongeForge) {
-    Seq(
-      unmanagedClasspath := Classpaths.concat(unmanagedClasspath, spongeGenerateForgeRun).value,
-      mainClass := Some("net.minecraftforge.fml.relauncher.ServerLaunchWrapper"),
-      fork in run := true,
-      spongeGenerateForgeRun := Def.task {
-        val runDir   = (baseDirectory in run).value
-        val forgeJar = s"forge-${spongeMinecraftVersion.value}-${spongeForgeVersion.value}-universal.jar"
+  lazy val spongeForgeSettings: Seq[Setting[_]] = Seq(
+    fork in (SpongeForge, spongeRun) := true,
+    baseDirectory in (SpongeForge, spongeRun) := file("runForge"),
+    libraryDependencies ++= spongeForgeRunInfo.value
+      .flatMap(_.spongeForgeVersion)
+      .map { version =>
+        "org.spongepowered" % "spongeforge" % version % SpongeForge classifier "dev" exclude ("org.spongepowered", "testmods")
+      },
+    spongeGenerateRun in SpongeForge := Def.task {
+      val optForgeInfo   = (spongeForgeRunInfo in SpongeForge).value
+      val runDir         = (baseDirectory in (SpongeForge, spongeRun)).value
+      val forgeJavaOpts  = (javaOptions in ForgeInstall).value
+      val forgeClasspath = (managedClasspath in ForgeInstall).value.files
+      val logger         = (streams in SpongeForge).value.log
+
+      if (optForgeInfo.isEmpty) {
+        logger.info("No forge info defined. spongeGenerateRun will do nothing")
+      }
+
+      optForgeInfo.fold(Seq.empty[File].classpath) { info =>
+        val forgeJar = s"forge-${info.minecraftVersion}-${info.forgeVersion}-universal.jar"
 
         if (!(runDir / forgeJar).exists()) {
-          runForgeInstaller(
-            runDir,
-            (javaOptions in ForgeInstall).value,
-            (managedClasspath in ForgeInstall).value.map(_.data),
-            streams.value.log
-          )
+          runDir.mkdirs()
+          runForgeInstaller(runDir, forgeJavaOpts, forgeClasspath, logger)
         }
 
         Seq(runDir / forgeJar).classpath
-      }.value,
-      baseDirectory in run := file("runForge"),
-      spongeFullVersion := currentSpongeForgeVersion(spongeApiVersion.value, spongeForgeVersion.value),
-      libraryDependencies += "org.spongepowered" % "spongeforge" % spongeFullVersion.value classifier "dev",
-      resolvers += "Forge" at "https://files.minecraftforge.net/maven",
-      libraryDependencies += {
-        val minecraftVersion = (spongeMinecraftVersion in SpongeForge).value
-        val fullForgeVersion = (spongeForgeVersion in SpongeForge).value
-
-        "net.minecraftforge" % "forge" % s"$minecraftVersion-$fullForgeVersion" classifier "installer"
       }
-    )
-  }
+    }.value
+  ) ++ inConfig(SpongeForge)(Defaults.configSettings) ++ fullRunTask(
+    spongeRun in SpongeForge,
+    SpongeForge,
+    "net.minecraftforge.fml.relauncher.ServerLaunchWrapper"
+  ) ++ Seq(
+    unmanagedClasspath in SpongeForge := Classpaths
+      .concat(unmanagedClasspath in SpongeForge, spongeGenerateRun in SpongeForge)
+      .value
+  )
 
-  lazy val forgeInstallSettings: Seq[Setting[_]] = inConfig(ForgeInstall) {
-    Seq(managedClasspath := Classpaths.managedJars(ForgeInstall, (classpathTypes in ForgeInstall).value, update.value))
-  }
+  lazy val forgeInstallSettings: Seq[Setting[_]] = Seq(
+    resolvers += "Forge" at "https://files.minecraftforge.net/maven",
+    libraryDependencies ++= {
+      (spongeForgeRunInfo in SpongeForge).value.map { info =>
+        val minecraftVersion = info.minecraftVersion
+        val forgeVersion     = info.forgeVersion
 
-  override def projectSettings: Seq[Setting[_]] = spongeSettings ++ oreSettings ++ spongeVanillaSettings ++ spongeForgeSettings ++ forgeInstallSettings
+        "net.minecraftforge" % "forge" % s"$minecraftVersion-$forgeVersion" % ForgeInstall classifier "installer"
+      }.toList
+    },
+    managedClasspath in ForgeInstall := Classpaths
+      .managedJars(ForgeInstall, (classpathTypes in ForgeInstall).value, update.value)
+  )
+
+  override def projectSettings: Seq[Setting[_]] =
+    spongeSettings ++ oreSettings ++ spongeVanillaSettings ++ spongeForgeSettings ++ forgeInstallSettings
 
   def generateMcModInfo(file: File, plugin: PluginInfo): File = {
     file.getParentFile.mkdirs()
@@ -188,6 +211,24 @@ object SpongePlugin extends AutoPlugin {
   private def removeSnapshot(version: String): String =
     if (version.endsWith("-SNAPSHOT")) version.substring(0, version.length - 9) else version
 
+  def runForgeInstaller(installDir: File, javaOptions: Seq[String], classpath: Seq[File], log: Logger): Unit = {
+    require(classpath.nonEmpty, "Can't run the Forge installer with an empty classpath")
+
+    val options = Seq(
+      "java",
+      "-cp",
+      Path.makeString(classpath),
+      "net.minecraftforge.installer.SimpleInstaller",
+      "-installServer"
+    ) ++ javaOptions
+    log.info(options.mkString(" "))
+
+    val exitCode = Process(options, installDir) ! log
+    if (exitCode != 0) sys.error("Error while generating forge installation")
+  }
+
+  //Some day these will work
+
   def downloadApiUrl(platform: String): HttpUrl.Builder =
     HttpUrl
       .parse(s"https://dl-api.spongepowered.org/v1/org.spongepowered/$platform/downloads")
@@ -200,7 +241,7 @@ object SpongePlugin extends AutoPlugin {
 
     val url = downloadApiUrl("spongevanilla")
       .addQueryParameter("type", if (bleeding) "bleeding" else "stable")
-      .addQueryParameter("version", spongeVersion)
+      .addQueryParameter("spongeapi", spongeVersion)
       .addQueryParameter("minecraft", minecraftVersion)
       .build()
 
@@ -213,7 +254,7 @@ object SpongePlugin extends AutoPlugin {
 
     val url = downloadApiUrl("spongeforge")
       .addQueryParameter("type", if (bleeding) "bleeding" else "stable")
-      .addQueryParameter("version", spongeVersion)
+      .addQueryParameter("spongeapi", spongeVersion)
       .addQueryParameter("forge", fullForgeVersion)
       .build()
 
@@ -235,7 +276,8 @@ object SpongePlugin extends AutoPlugin {
               .getOrElse {
                 throw new IOException("Could not find Sponge version that matched the specified criteria")
               }
-          case Success(_) => throw new IOException("Unexpected response from Sponge download API")
+          case Success(value) =>
+            throw new IOException(s"Unexpected response from Sponge download API.\n${value.toStandard}")
           case Failure(e) =>
             throw new IOException("Failed to find sponge platform dependency", e)
         }
@@ -246,21 +288,5 @@ object SpongePlugin extends AutoPlugin {
         response.close()
       }
     }
-  }
-
-  def runForgeInstaller(installDir: File, javaOptions: Seq[String], classpath: Seq[File], log: Logger): Unit = {
-    require(classpath.nonEmpty, "Can't run the Forge installer with an empty classpath")
-
-    val options = javaOptions ++ Seq(
-      "java",
-      "-cp",
-      Path.makeString(classpath),
-      "net.minecraftforge.installer.SimpleInstaller",
-      "-installServer"
-    )
-    log.info(options.mkString(" "))
-
-    val exitCode = Process(options, installDir) ! log
-    if (exitCode != 0) sys.error("Error while generating forge installation")
   }
 }

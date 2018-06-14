@@ -47,9 +47,9 @@ object SpongeSbtImports {
   def oreDependency(id: String, version: String): ModuleID =
     "ore" % id % version from s"https://ore.spongepowered.org/api/projects/$id/versions/$version/download"
 
-  lazy val SpongeVanilla = config("spongeVanilla").extend(Compile)
-  lazy val SpongeForge   = config("spongeForge").extend(Compile)
-  lazy val ForgeInstall   = config("forgeinstall").hide
+  lazy val SpongeVanilla = config("spongeVanilla").extend(Runtime)
+  lazy val SpongeForge   = config("spongeForge").extend(Runtime)
+  lazy val ForgeInstall  = config("forgeinstall").hide
 
   lazy val spongeApiVersion = settingKey[String]("The version of sponge to use")
   lazy val spongePluginInfo = settingKey[PluginInfo]("What info to include in the mcmod.info file")
@@ -74,8 +74,16 @@ object SpongeSbtImports {
       project.configurePlatform(SpongePlatform(version))(_.settings(ss: _*))
   }
 
-  lazy val spongeForgeVersion     = settingKey[String]("The forge version to use")
-  lazy val spongeGenerateForgeRun = taskKey[Classpath]("Generates the needed files for forge to run")
-  lazy val spongeMinecraftVersion = settingKey[String]("The minecraft version to use")
-  lazy val spongeFullVersion      = settingKey[String]("The full sponge version to use")
+  final val SpongeForgeRunInfo = sbtspongyinfo.SpongeForgeRunInfo
+  type SpongeForgeRunInfo = sbtspongyinfo.SpongeForgeRunInfo
+
+  final val SpongeVanillaRunInfo = sbtspongyinfo.SpongeVanillaRunInfo
+  type SpongeVanillaRunInfo = sbtspongyinfo.SpongeVanillaRunInfo
+
+  lazy val spongeForgeRunInfo = settingKey[Option[SpongeForgeRunInfo]]("All the information SpongeForge needs to run")
+  lazy val spongeVanillaRunInfo =
+    settingKey[Option[SpongeVanillaRunInfo]]("All the information SpongeVanilla needs to run")
+
+  lazy val spongeGenerateRun = taskKey[Classpath]("Generates the needed files for forge to run")
+  lazy val spongeRun = taskKey[Unit]("Run Sponge")
 }
