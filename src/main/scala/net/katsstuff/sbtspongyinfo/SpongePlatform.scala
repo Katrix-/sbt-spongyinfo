@@ -9,8 +9,4 @@ case class SpongePlatform(version: String) extends Platform {
   override def sbtSuffix:  String = s"Sponge${version.replace('.', '-')}"
   override def enable(project: Project) =
     project.enablePlugins(SpongePlugin).settings(spongeApiVersion := version)
-
-  override val crossBinary = CrossVersion.binary
-
-  override val crossFull = CrossVersion.full
 }
