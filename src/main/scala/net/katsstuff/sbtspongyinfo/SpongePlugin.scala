@@ -37,7 +37,7 @@ object SpongePlugin extends AutoPlugin {
   val autoImport: SpongeSbtImports.type = SpongeSbtImports
   import autoImport._
 
-  lazy val baseSettings: Seq[Setting[_]] = Seq[Setting[_]](
+  lazy val spongeSettings: Seq[Setting[_]] = Seq(
     spongeMetaCreate := true,
     spongeApiVersion := "7.0.0",
     spongePluginInfo := PluginInfo(
@@ -49,12 +49,13 @@ object SpongePlugin extends AutoPlugin {
     ),
     spongeMetaFile := generateMcModInfo((resourceManaged in Compile).value / "mcmod.info", spongePluginInfo.value),
     resourceGenerators in Compile += Def.task {
-      if (spongeMetaCreate.value) {
-        Seq(generateMcModInfo((resourceManaged in Compile).value / "mcmod.info", spongePluginInfo.value))
-      } else Seq()
+      if (spongeMetaCreate.value) Seq(spongeMetaFile.value) else Seq.empty
     }.taskValue,
     resolvers += SpongeRepo,
     libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided,
+  )
+
+  lazy val oreSettings: Seq[Setting[_]] = Seq(
     oreUrl := "https://ore.spongepowered.org",
     oreRecommended := true,
     oreChannel := "Release",
@@ -65,7 +66,7 @@ object SpongePlugin extends AutoPlugin {
     oreDeploy := Some(signJar.value),
   )
 
-  override def projectSettings: Seq[Setting[_]] = baseSettings
+  override def projectSettings: Seq[Setting[_]] = spongeSettings ++ oreSettings
 
   def generateMcModInfo(file: File, plugin: PluginInfo): File = {
     file.getParentFile.mkdirs()
@@ -75,14 +76,14 @@ object SpongePlugin extends AutoPlugin {
 
   val signJar = Def.taskDyn {
     val deployFile   = oreDeployFile.value
-    val r            = SbtPgp.autoImport.PgpKeys.pgpSigner.value
-    val s            = streams.value
+    val signer       = SbtPgp.autoImport.PgpKeys.pgpSigner.value
+    val logger       = streams.value
     val gpgExtension = com.typesafe.sbt.pgp.gpgExtension
-    val signature    = r.sign(deployFile, new File(deployFile.getAbsolutePath + gpgExtension), s)
-    deploy(deployFile, signature, s)
+    val signature    = signer.sign(deployFile, file(deployFile.getAbsolutePath + gpgExtension), logger)
+    deploy(deployFile, signature, logger)
   }
 
-  def deploy(jar: File, signature: File, s: TaskStreams): Def.Initialize[Task[(sbt.File, sbt.File)]] =
+  def deploy(jar: File, signature: File, logger: TaskStreams): Def.Initialize[Task[(sbt.File, sbt.File)]] =
     Def.task {
       require(oreDeploymentKey.value.isDefined, "Ore API key needs to be set")
       val pluginInfo = spongePluginInfo.value
@@ -111,7 +112,7 @@ object SpongePlugin extends AutoPlugin {
       val client = new OkHttpClient()
       var response: Response = null
       try {
-        s.log.info(s"Deploying ${jar.name} to $projectUrl")
+        logger.log.info(s"Deploying ${jar.name} to $projectUrl")
         response = client.newCall(request).execute()
         val status  = response.code()
         val created = status == 201
@@ -119,8 +120,8 @@ object SpongePlugin extends AutoPlugin {
           val body = response.body().string()
           throw new IOException(s"$status Could not deploy plugin. ${response.message()}\n$body")
         }
-        s.log.debug(response.body().string())
-        s.log.info(s"Successfully deployed ${jar.name} to Ore")
+        logger.log.debug(response.body().string())
+        logger.log.info(s"Successfully deployed ${jar.name} to Ore")
       } finally {
         if (response != null) {
           response.close()
