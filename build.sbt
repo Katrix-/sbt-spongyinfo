@@ -19,4 +19,4 @@ bintrayRepository := "sbt-plugins"
 bintrayOrganization in bintray := None
 
 bintrayReleaseOnPublish in ThisBuild := false
-bintrayVcsUrl := Some("git@github.com:Katrix-/sbt-spongyinfo.git")
+bintrayVcsUrl := Some("git@github.com:Katrix/sbt-spongyinfo.git")
