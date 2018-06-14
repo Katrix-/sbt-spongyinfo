@@ -48,8 +48,8 @@ object SpongePlugin extends AutoPlugin {
       url = homepage.value.map(_.toString)
     ),
     spongeMetaFile := generateMcModInfo((resourceManaged in Compile).value / "mcmod.info", spongePluginInfo.value),
-    resourceGenerators in Compile += Def.task {
-      if (spongeMetaCreate.value) Seq(spongeMetaFile.value) else Seq.empty
+    resourceGenerators in Compile += Def.taskDyn {
+      if (spongeMetaCreate.value) Def.task(Seq(spongeMetaFile.value)) else Def.task(Seq.empty[File])
     }.taskValue,
     resolvers += SpongeRepo,
     libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided,
