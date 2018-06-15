@@ -22,6 +22,7 @@ package net.katsstuff.sbtspongyinfo
 
 import net.katsstuff.sbtspongyinfo
 import sbt._
+import sbt.Keys._
 import sbtcrossproject.CrossProject
 
 object SpongeSbtImports {
@@ -41,6 +42,15 @@ object SpongeSbtImports {
 
   final val SpongePlatform = sbtspongyinfo.SpongePlatform
   type SpongePlatform = sbtspongyinfo.SpongePlatform.type
+
+  //TODO: Only approved plugins
+  def oreDependency(id: String, version: String): ModuleID =
+    "ore" % id % version from s"https://ore.spongepowered.org/api/projects/$id/versions/$version/download"
+
+  lazy val SpongeVanilla  = config("spongeVanilla").extend(Runtime)
+  lazy val SpongeForge    = config("spongeForge").extend(Runtime)
+  lazy val ForgeInstall   = config("forgeinstall").hide
+  lazy val VanillaInstall = config("vanillainstall").hide
 
   lazy val spongeApiVersion = settingKey[String]("The version of sponge to use")
   lazy val spongePluginInfo = settingKey[PluginInfo]("What info to include in the mcmod.info file")
@@ -64,4 +74,17 @@ object SpongeSbtImports {
     def spongeSettings(version: String)(ss: Def.SettingsDefinition*): CrossProject =
       project.configurePlatform(SpongePlatform(version))(_.settings(ss: _*))
   }
+
+  final val SpongeForgeRunInfo = sbtspongyinfo.SpongeForgeRunInfo
+  type SpongeForgeRunInfo = sbtspongyinfo.SpongeForgeRunInfo
+
+  final val SpongeVanillaRunInfo = sbtspongyinfo.SpongeVanillaRunInfo
+  type SpongeVanillaRunInfo = sbtspongyinfo.SpongeVanillaRunInfo
+
+  lazy val spongeForgeRunInfo = settingKey[Option[SpongeForgeRunInfo]]("All the information SpongeForge needs to run")
+  lazy val spongeVanillaRunInfo =
+    settingKey[Option[SpongeVanillaRunInfo]]("All the information SpongeVanilla needs to run")
+
+  lazy val spongeGenerateRun = taskKey[Classpath]("Generates the needed files for forge to run")
+  lazy val spongeRun = inputKey[Unit]("Run Sponge")
 }
