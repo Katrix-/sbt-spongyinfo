@@ -47,9 +47,10 @@ object SpongeSbtImports {
   def oreDependency(id: String, version: String): ModuleID =
     "ore" % id % version from s"https://ore.spongepowered.org/api/projects/$id/versions/$version/download"
 
-  lazy val SpongeVanilla = config("spongeVanilla").extend(Runtime)
-  lazy val SpongeForge   = config("spongeForge").extend(Runtime)
-  lazy val ForgeInstall  = config("forgeinstall").hide
+  lazy val SpongeVanilla  = config("spongeVanilla").extend(Runtime)
+  lazy val SpongeForge    = config("spongeForge").extend(Runtime)
+  lazy val ForgeInstall   = config("forgeinstall").hide
+  lazy val VanillaInstall = config("vanillainstall").hide
 
   lazy val spongeApiVersion = settingKey[String]("The version of sponge to use")
   lazy val spongePluginInfo = settingKey[PluginInfo]("What info to include in the mcmod.info file")
@@ -85,5 +86,5 @@ object SpongeSbtImports {
     settingKey[Option[SpongeVanillaRunInfo]]("All the information SpongeVanilla needs to run")
 
   lazy val spongeGenerateRun = taskKey[Classpath]("Generates the needed files for forge to run")
-  lazy val spongeRun = taskKey[Unit]("Run Sponge")
+  lazy val spongeRun = inputKey[Unit]("Run Sponge")
 }

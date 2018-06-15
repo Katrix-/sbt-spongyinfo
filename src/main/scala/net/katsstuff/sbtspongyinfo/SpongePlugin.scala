@@ -74,32 +74,64 @@ object SpongePlugin extends AutoPlugin {
     oreDeploy := Some(signJar.value),
   )
 
-  override def projectConfigurations: Seq[Configuration] = Seq(SpongeVanilla, SpongeForge, ForgeInstall)
+  override def projectConfigurations: Seq[Configuration] = Seq(SpongeVanilla, SpongeForge, ForgeInstall, VanillaInstall)
 
   lazy val spongeVanillaSettings: Seq[Setting[_]] = Seq(
     fork in (SpongeVanilla, spongeRun) := true,
-    baseDirectory in (SpongeVanilla, spongeRun) := file("runVanilla"),
-    libraryDependencies ++= spongeVanillaRunInfo.value
-      .flatMap(_.spongeVanillaVersion)
-      .map(version => "org.spongepowered" % "spongevanilla" % version % SpongeVanilla classifier "dev")
-      .toList
-  ) ++ inConfig(SpongeVanilla)(Defaults.configSettings) ++ fullRunTask(
+    baseDirectory in SpongeVanilla := file("runVanilla"),
+    connectInput in SpongeVanilla := true,
+    outputStrategy in SpongeVanilla := Some(OutputStrategy.StdoutOutput),
+    spongeGenerateRun in SpongeVanilla := Def.task {
+      val optVanillaVersion = (spongeVanillaRunInfo in SpongeVanilla).value.flatMap(_.spongeVanillaVersion)
+      val runDir            = (baseDirectory in SpongeVanilla).value
+      val vanillaClasspath  = (managedClasspath in VanillaInstall).value.files
+      val logger            = (streams in SpongeVanilla).value.log
+
+      if (optVanillaVersion.isEmpty) {
+        logger.info("No SpongeVanilla version defined. spongeGenerateRun will do nothing")
+      }
+
+      optVanillaVersion.fold(Seq.empty[File].classpath) { version =>
+        val vanillaJar = s"spongevanilla-$version.jar"
+
+        if (!(runDir / vanillaJar).exists()) {
+          runDir.mkdirs()
+          vanillaClasspath.foreach(file => IO.copyFile(file, runDir / file.getName))
+        }
+
+        Seq(runDir / vanillaJar).classpath
+      }
+    }.value
+  ) ++ inConfig(SpongeVanilla)(Defaults.configSettings) ++ fullRunInputTask(
     spongeRun in SpongeVanilla,
     SpongeVanilla,
-    "org.spongepowered.server.launch.VersionCheckingMain"
+    "org.spongepowered.server.launch.VersionCheckingMain",
+    "--scan-classpath"
+  ) ++ Seq(
+    (spongeRun in SpongeVanilla) := (spongeRun in SpongeVanilla)
+      .dependsOn(spongeGenerateRun in SpongeVanilla)
+      .evaluated,
+    unmanagedClasspath in SpongeVanilla := Classpaths
+      .concat(unmanagedClasspath in SpongeVanilla, spongeGenerateRun in SpongeVanilla)
+      .value,
+    fullClasspath in SpongeVanilla := {
+      val old                          = (fullClasspath in SpongeVanilla).value
+      val (classesDirs, nonClassesDir) = old.partition(_.data.name.endsWith("classes"))
+      nonClassesDir ++ classesDirs
+    }
   )
 
   lazy val spongeForgeSettings: Seq[Setting[_]] = Seq(
     fork in (SpongeForge, spongeRun) := true,
-    baseDirectory in (SpongeForge, spongeRun) := file("runForge"),
-    libraryDependencies ++= spongeForgeRunInfo.value
+    baseDirectory in SpongeForge := file("runForge"),
+    connectInput in SpongeForge := true,
+    outputStrategy in SpongeForge := Some(OutputStrategy.StdoutOutput),
+    libraryDependencies ++= (spongeForgeRunInfo in SpongeForge).value
       .flatMap(_.spongeForgeVersion)
-      .map { version =>
-        "org.spongepowered" % "spongeforge" % version % SpongeForge classifier "dev" exclude ("org.spongepowered", "testmods")
-      },
+      .map(version => "org.spongepowered" % "spongeforge" % version % SpongeForge intransitive ()),
     spongeGenerateRun in SpongeForge := Def.task {
       val optForgeInfo   = (spongeForgeRunInfo in SpongeForge).value
-      val runDir         = (baseDirectory in (SpongeForge, spongeRun)).value
+      val runDir         = (baseDirectory in SpongeForge).value
       val forgeJavaOpts  = (javaOptions in ForgeInstall).value
       val forgeClasspath = (managedClasspath in ForgeInstall).value.files
       val logger         = (streams in SpongeForge).value.log
@@ -118,12 +150,15 @@ object SpongePlugin extends AutoPlugin {
 
         Seq(runDir / forgeJar).classpath
       }
-    }.value
-  ) ++ inConfig(SpongeForge)(Defaults.configSettings) ++ fullRunTask(
+    }.value,
+    javaOptions in SpongeForge += "-Dfml.coreMods.load=org.spongepowered.mod.SpongeCoremod"
+  ) ++ inConfig(SpongeForge)(Defaults.configSettings) ++ fullRunInputTask(
     spongeRun in SpongeForge,
     SpongeForge,
-    "net.minecraftforge.fml.relauncher.ServerLaunchWrapper"
+    "net.minecraftforge.fml.relauncher.ServerLaunchWrapper",
+    "nogui"
   ) ++ Seq(
+    (spongeRun in SpongeForge) := (spongeRun in SpongeForge).dependsOn(spongeGenerateRun in SpongeForge).evaluated,
     unmanagedClasspath in SpongeForge := Classpaths
       .concat(unmanagedClasspath in SpongeForge, spongeGenerateRun in SpongeForge)
       .value
@@ -143,8 +178,16 @@ object SpongePlugin extends AutoPlugin {
       .managedJars(ForgeInstall, (classpathTypes in ForgeInstall).value, update.value)
   )
 
+  lazy val vanillaInstallSettings: Seq[Setting[_]] = Seq(
+    libraryDependencies ++= (spongeVanillaRunInfo in SpongeVanilla).value
+      .flatMap(_.spongeVanillaVersion)
+      .map(version => "org.spongepowered" % "spongevanilla" % version % VanillaInstall intransitive ()),
+    managedClasspath in VanillaInstall := Classpaths
+      .managedJars(VanillaInstall, (classpathTypes in VanillaInstall).value, update.value)
+  )
+
   override def projectSettings: Seq[Setting[_]] =
-    spongeSettings ++ oreSettings ++ spongeVanillaSettings ++ spongeForgeSettings ++ forgeInstallSettings
+    spongeSettings ++ oreSettings ++ spongeVanillaSettings ++ spongeForgeSettings ++ forgeInstallSettings ++ vanillaInstallSettings
 
   def generateMcModInfo(file: File, plugin: PluginInfo): File = {
     file.getParentFile.mkdirs()
