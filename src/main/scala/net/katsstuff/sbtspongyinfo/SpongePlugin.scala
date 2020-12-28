@@ -21,12 +21,12 @@
 package net.katsstuff.sbtspongyinfo
 
 import java.io.IOException
-
 import com.jsuereth.sbtpgp.SbtPgp
 
 import scala.sys.process.Process
-import scala.util.{Failure, Success}
-import org.spongepowered.plugin.meta.McModInfo
+import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
+import org.spongepowered.plugin.{meta => v7, metadata => v8}
 import okhttp3.{HttpUrl, MultipartBody, OkHttpClient, Request, RequestBody, Response}
 import sbt.Keys._
 import sbt.{Def, _}
@@ -41,21 +41,59 @@ object SpongePlugin extends AutoPlugin {
   val autoImport: SpongeSbtImports.type = SpongeSbtImports
   import autoImport._
 
-  lazy val spongeSettings: Seq[Setting[_]] = Seq(
-    spongeMetaCreate := true,
-    spongeApiVersion := "7.0.0",
-    spongePluginInfo := PluginInfo(
+  lazy val sponge8Settings: Seq[Setting[_]] = Seq(
+    spongeV8.metaCreate := {
+      val apiVersion = spongeApiVersion.value
+      apiVersion.split('.').headOption.flatMap(s => Try(s.toInt).toOption).exists(_ >= 8)
+    },
+    spongeV8.pluginLoader := "java_plain",
+    spongeV8.pluginInfo := Seq(
+      spongeV8.PluginInfo(
+        loader = spongeV8.pluginLoader.value,
+        id = thisProject.value.id,
+        name = Some(name.value),
+        version = version.value,
+        mainClass = "Not found, please specify",
+        description = Some(description.value),
+        links = spongeV8.Links(homepage = homepage.value, source = None, issues = None),
+        contributors = developers.value.map(dev => spongeV8.Contributor(dev.name, None)),
+      )
+    ),
+    spongeV8.metaFile := generatePluginsJson(
+      (resourceManaged in Compile).value / "plugins.json",
+      spongeV8.pluginInfo.value
+    ),
+    resourceGenerators in Compile += Def.taskDyn {
+      if (spongeV8.metaCreate.value) Def.task(Seq(spongeV8.metaFile.value)) else Def.task(Seq.empty[File])
+    }.taskValue,
+  )
+
+  lazy val sponge7Settings: Seq[Setting[_]] = Seq(
+    spongeV7.metaCreate := {
+      val apiVersion = spongeApiVersion.value
+      apiVersion.split('.').headOption.flatMap(s => Try(s.toInt).toOption).exists(_ <= 7)
+    },
+    spongeV7.pluginInfo := spongeV7.PluginInfo(
       id = thisProject.value.id,
       name = Some(name.value),
       version = Some(version.value),
       description = Some(description.value),
-      url = homepage.value.map(_.toString)
+      url = homepage.value.map(_.toString),
+      authors = developers.value.map(_.name),
     ),
-    spongeMetaFile := generateMcModInfo((resourceManaged in Compile).value / "mcmod.info", spongePluginInfo.value),
+    spongeV7.metaFile := generateMcModInfo(
+      (resourceManaged in Compile).value / "mcmod.info",
+      spongeV7.pluginInfo.value
+    ),
     resourceGenerators in Compile += Def.taskDyn {
-      if (spongeMetaCreate.value) Def.task(Seq(spongeMetaFile.value)) else Def.task(Seq.empty[File])
+      if (spongeV7.metaCreate.value) Def.task(Seq(spongeV7.metaFile.value)) else Def.task(Seq.empty[File])
     }.taskValue,
+  )
+
+  lazy val spongeSettings: Seq[Setting[_]] = sponge7Settings ++ sponge8Settings ++ Seq(
+    spongeApiVersion := "7.0.0",
     resolvers += SpongeRepo,
+    resolvers += SpongeSnapshotRepo,
     libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided,
     spongeVanillaRunInfo := None,
     spongeForgeRunInfo := None
@@ -63,6 +101,7 @@ object SpongePlugin extends AutoPlugin {
 
   lazy val oreSettings: Seq[Setting[_]] = Seq(
     oreUrl := "https://ore.spongepowered.org",
+    oreVersion := version.value,
     oreRecommended := true,
     oreChannel := "Release",
     oreCreateForumPost := None,
@@ -187,9 +226,15 @@ object SpongePlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] =
     spongeSettings ++ oreSettings ++ spongeVanillaSettings ++ spongeForgeSettings ++ forgeInstallSettings ++ vanillaInstallSettings
 
-  def generateMcModInfo(file: File, plugin: PluginInfo): File = {
+  def generateMcModInfo(file: File, plugin: PluginInfoV7): File = {
     file.getParentFile.mkdirs()
-    McModInfo.DEFAULT.write(file.toPath, plugin.toSponge)
+    v7.McModInfo.DEFAULT.write(file.toPath, plugin.toSponge)
+    file
+  }
+
+  def generatePluginsJson(file: File, plugins: Seq[PluginInfoV8]): File = {
+    file.getParentFile.mkdirs()
+    v8.util.PluginMetadataHelper.builder().build().write(file.toPath, plugins.map(_.toSponge).asJava)
     file
   }
 
@@ -205,12 +250,13 @@ object SpongePlugin extends AutoPlugin {
   def deploy(jar: File, signature: File, logger: TaskStreams): Def.Initialize[Task[(sbt.File, sbt.File)]] =
     Def.task {
       require(oreDeploymentKey.value.isDefined, "Ore API key needs to be set")
-      val pluginInfo = spongePluginInfo.value
-      require(pluginInfo.version.isDefined, "Plugin version can't be empty")
 
-      val oreUrlValue = oreUrl.value
-      val usedUrl     = if (oreUrlValue.endsWith("/")) oreUrlValue.dropRight(1) else oreUrlValue
-      val projectUrl  = s"$usedUrl/api/projects/${pluginInfo.id}/versions/${pluginInfo.version.get}"
+      val oreUrlValue     = oreUrl.value
+      val oreApiV1IdValue = oreApiV1Id.value
+      val oreVersionValue = oreVersion.value
+
+      val usedUrl    = if (oreUrlValue.endsWith("/")) oreUrlValue.dropRight(1) else oreUrlValue
+      val projectUrl = s"$usedUrl/api/projects/$oreApiV1IdValue/versions/$oreVersionValue"
 
       val body = {
         val builder = new MultipartBody.Builder()

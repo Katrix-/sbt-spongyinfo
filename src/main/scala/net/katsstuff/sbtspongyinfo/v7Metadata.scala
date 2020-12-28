@@ -24,14 +24,14 @@ import scala.collection.JavaConverters._
 
 import org.spongepowered.plugin.meta.{PluginDependency, PluginMetadata}
 
-case class PluginInfo(
+case class PluginInfoV7(
     id: String,
     name: Option[String] = None,
     version: Option[String] = None,
     description: Option[String] = None,
     url: Option[String] = None,
     authors: Seq[String] = Nil,
-    dependencies: Set[DependencyInfo] = Set(),
+    dependencies: Set[DependencyInfoV7] = Set(),
     extra: Map[String, _] = Map()
 ) {
 
@@ -47,50 +47,50 @@ case class PluginInfo(
     metadata
   }
 }
-object PluginInfo {
+object PluginInfoV7 {
 
-  def apply(spongeMeta: PluginMetadata): PluginInfo = {
-    new PluginInfo(
+  def apply(spongeMeta: PluginMetadata): PluginInfoV7 = {
+    new PluginInfoV7(
       id = spongeMeta.getId,
       name = Option(spongeMeta.getName),
       version = Option(spongeMeta.getVersion),
       description = Option(spongeMeta.getDescription),
       url = Option(spongeMeta.getUrl),
       authors = spongeMeta.getAuthors.asScala,
-      dependencies = spongeMeta.getDependencies.asScala.map(DependencyInfo.apply).toSet,
+      dependencies = spongeMeta.getDependencies.asScala.map(DependencyInfoV7.apply).toSet,
       extra = Map(spongeMeta.getExtensions.asScala.toSeq: _*)
     )
   }
 }
 
-sealed trait LoadOrder
-object LoadOrder {
-  case object None   extends LoadOrder
-  case object Before extends LoadOrder
-  case object After  extends LoadOrder
+sealed trait LoadOrderV7
+object LoadOrderV7 {
+  case object None   extends LoadOrderV7
+  case object Before extends LoadOrderV7
+  case object After  extends LoadOrderV7
 
-  def toSponge(loadOrder: LoadOrder): PluginDependency.LoadOrder = loadOrder match {
+  def toSponge(loadOrder: LoadOrderV7): PluginDependency.LoadOrder = loadOrder match {
     case None   => PluginDependency.LoadOrder.NONE
     case Before => PluginDependency.LoadOrder.BEFORE
     case After  => PluginDependency.LoadOrder.AFTER
   }
 
-  def fromSponge(loadOrder: PluginDependency.LoadOrder): LoadOrder = loadOrder match {
+  def fromSponge(loadOrder: PluginDependency.LoadOrder): LoadOrderV7 = loadOrder match {
     case PluginDependency.LoadOrder.NONE   => None
     case PluginDependency.LoadOrder.BEFORE => Before
     case PluginDependency.LoadOrder.AFTER  => After
   }
 }
-case class DependencyInfo(loadOrder: LoadOrder, id: String, version: Option[String] = None, optional: Boolean) {
+case class DependencyInfoV7(loadOrder: LoadOrderV7, id: String, version: Option[String] = None, optional: Boolean) {
 
-  def toSponge: PluginDependency = new PluginDependency(LoadOrder.toSponge(loadOrder), id, version.orNull, optional)
+  def toSponge: PluginDependency = new PluginDependency(LoadOrderV7.toSponge(loadOrder), id, version.orNull, optional)
 }
 
-object DependencyInfo {
+object DependencyInfoV7 {
 
-  def apply(spongeDependency: PluginDependency): DependencyInfo =
-    new DependencyInfo(
-      LoadOrder.fromSponge(spongeDependency.getLoadOrder),
+  def apply(spongeDependency: PluginDependency): DependencyInfoV7 =
+    new DependencyInfoV7(
+      LoadOrderV7.fromSponge(spongeDependency.getLoadOrder),
       spongeDependency.getId,
       Option(spongeDependency.getVersion),
       spongeDependency.isOptional

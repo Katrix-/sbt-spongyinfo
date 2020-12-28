@@ -27,18 +27,51 @@ import sbtcrossproject.CrossProject
 
 object SpongeSbtImports {
 
-  final val SpongeRepo = "SpongePowered" at "https://repo.spongepowered.org/maven"
+  final val SpongeRepo         = "SpongePowered" at "https://repo-new.spongepowered.org/repository/maven-releases"
+  final val SpongeSnapshotRepo = "SpongePowered-snapshots" at "https://repo-new.spongepowered.org/repository/maven-snapshots"
 
   final val SpongePlugin = sbtspongyinfo.SpongePlugin
 
-  final val PluginInfo = sbtspongyinfo.PluginInfo
-  type PluginInfo = sbtspongyinfo.PluginInfo
+  object spongeV7 {
+    final val PluginInfo = sbtspongyinfo.PluginInfoV7
+    type PluginInfo = sbtspongyinfo.PluginInfoV7
 
-  final val DependencyInfo = sbtspongyinfo.DependencyInfo
-  type DependencyInfo = sbtspongyinfo.DependencyInfo
+    final val Dependency = sbtspongyinfo.DependencyInfoV7
+    type DependencyInfo = sbtspongyinfo.DependencyInfoV7
 
-  final val LoadOrder = sbtspongyinfo.LoadOrder
-  type LoadOrder = sbtspongyinfo.LoadOrder
+    final val LoadOrder = sbtspongyinfo.LoadOrderV7
+    type LoadOrder = sbtspongyinfo.LoadOrderV7
+
+    lazy val pluginInfo = SettingKey[PluginInfo]("spongePluginInfoV7", "What info to include in the mcmod.info file")
+    lazy val metaCreate = SettingKey[Boolean]("spongeMetaCreateV7", "If the mcmod.info file should be created")
+    lazy val metaFile   = TaskKey[File]("spongeMetaFileV8", "Creates the mcmod.info file")
+  }
+
+  object spongeV8 {
+    final val PluginInfo = sbtspongyinfo.PluginInfoV8
+    type PluginInfo = sbtspongyinfo.PluginInfoV8
+
+    final val Links = sbtspongyinfo.PluginLinksV8
+    type Links = sbtspongyinfo.PluginLinksV8
+
+    final val Contributor = sbtspongyinfo.ContributorV8
+    type Contributor = sbtspongyinfo.ContributorV8
+
+    final val Dependency = sbtspongyinfo.DependencyInfoV8
+    type DependencyInfo = sbtspongyinfo.DependencyInfoV8
+
+    final val LoadOrder = sbtspongyinfo.LoadOrderV8
+    type LoadOrder = sbtspongyinfo.LoadOrderV8
+
+    lazy val pluginLoader = SettingKey[String](
+      "spongeDefaultPluginLoaderV8",
+      "The loader to use. Use this setting to easily apply one loader to all plugins in the project"
+    )
+    lazy val pluginInfo =
+      SettingKey[Seq[PluginInfo]]("spongePluginInfoV8", "What info to include in the plugins.json file")
+    lazy val metaCreate = SettingKey[Boolean]("spongeMetaCreateV8", "If the plugins.json file should be created")
+    lazy val metaFile   = TaskKey[File]("spongeMetaFileV8", "Creates the plugins.json file")
+  }
 
   final val SpongePlatform = sbtspongyinfo.SpongePlatform
   type SpongePlatform = sbtspongyinfo.SpongePlatform.type
@@ -53,11 +86,11 @@ object SpongeSbtImports {
   lazy val VanillaInstall = config("vanillainstall").hide
 
   lazy val spongeApiVersion = settingKey[String]("The version of sponge to use")
-  lazy val spongePluginInfo = settingKey[PluginInfo]("What info to include in the mcmod.info file")
-  lazy val spongeMetaCreate = settingKey[Boolean]("If the meta mcmod.info file should be created")
-  lazy val spongeMetaFile   = taskKey[File]("Creates a mcmod.info file")
 
   lazy val oreUrl = settingKey[String]("The url to use for Ore")
+  lazy val oreApiV1Id =
+    settingKey[String]("The Ore APIv1 identifier for the project. For older project this is your plugin id")
+  lazy val oreVersion = settingKey[String]("Version to deploy the project to")
   @deprecated("Ore no longer respects this", since = "1.5")
   lazy val oreRecommended =
     settingKey[Boolean]("If the plugin should be set as the recommended plugin when uploaded to Ore")
@@ -88,5 +121,5 @@ object SpongeSbtImports {
     settingKey[Option[SpongeVanillaRunInfo]]("All the information SpongeVanilla needs to run")
 
   lazy val spongeGenerateRun = taskKey[Classpath]("Generates the needed files for forge to run")
-  lazy val spongeRun = inputKey[Unit]("Run Sponge")
+  lazy val spongeRun         = inputKey[Unit]("Run Sponge")
 }
