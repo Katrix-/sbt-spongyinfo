@@ -58,8 +58,10 @@ object SpongeSbtImports {
   lazy val spongeMetaFile   = taskKey[File]("Creates a mcmod.info file")
 
   lazy val oreUrl = settingKey[String]("The url to use for Ore")
+  @deprecated("Ore no longer respects this", since = "1.5")
   lazy val oreRecommended =
     settingKey[Boolean]("If the plugin should be set as the recommended plugin when uploaded to Ore")
+  @deprecated("Ore will soon stop respecting this", since = "1.5")
   lazy val oreChannel   = settingKey[String]("The channel to upload to when uploading a plugin to Ore")
   lazy val oreChangelog = taskKey[Option[String]]("The changelog to send when publishing a plugin to Ore")
   lazy val oreCreateForumPost =

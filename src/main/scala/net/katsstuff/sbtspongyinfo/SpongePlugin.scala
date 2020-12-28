@@ -22,13 +22,11 @@ package net.katsstuff.sbtspongyinfo
 
 import java.io.IOException
 
+import com.jsuereth.sbtpgp.SbtPgp
+
 import scala.sys.process.Process
 import scala.util.{Failure, Success}
-
 import org.spongepowered.plugin.meta.McModInfo
-
-import com.typesafe.sbt.SbtPgp
-
 import okhttp3.{HttpUrl, MultipartBody, OkHttpClient, Request, RequestBody, Response}
 import sbt.Keys._
 import sbt.{Def, _}
@@ -199,7 +197,7 @@ object SpongePlugin extends AutoPlugin {
     val deployFile   = oreDeployFile.value
     val signer       = SbtPgp.autoImport.PgpKeys.pgpSigner.value
     val logger       = streams.value
-    val gpgExtension = com.typesafe.sbt.pgp.gpgExtension
+    val gpgExtension = com.jsuereth.sbtpgp.gpgExtension
     val signature    = signer.sign(deployFile, file(deployFile.getAbsolutePath + gpgExtension), logger)
     deploy(deployFile, signature, logger)
   }
