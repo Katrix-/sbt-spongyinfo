@@ -5,7 +5,7 @@ sbt-spongyinfo is a sbt plugin that makes making plugins for Sponge easier and l
 To add sbt-spongyinfo to your project, add this to your `plugins.sbt`
 
 ```scala
-resolvers += "SpongePowered-Snapshots" at "https://repo-new.spongepowered.org/repository/maven-snapshots"
+resolvers += "SpongePowered" at "https://repo-new.spongepowered.org/repository/maven-public"
 addSbtPlugin("net.katsstuff" % "sbt-spongyinfo" % "2.0.0-SNAPSHOT")
 ```
 

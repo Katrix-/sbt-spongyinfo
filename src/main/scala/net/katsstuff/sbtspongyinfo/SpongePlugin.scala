@@ -93,7 +93,6 @@ object SpongePlugin extends AutoPlugin {
   lazy val spongeSettings: Seq[Setting[_]] = sponge7Settings ++ sponge8Settings ++ Seq(
     spongeApiVersion := "7.0.0",
     resolvers += SpongeRepo,
-    resolvers += SpongeSnapshotRepo,
     libraryDependencies += "org.spongepowered" % "spongeapi" % spongeApiVersion.value % Provided,
     spongeVanillaRunInfo := None,
     spongeForgeRunInfo := None

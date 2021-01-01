@@ -27,8 +27,7 @@ import sbtcrossproject.CrossProject
 
 object SpongeSbtImports {
 
-  final val SpongeRepo         = "SpongePowered" at "https://repo-new.spongepowered.org/repository/maven-releases"
-  final val SpongeSnapshotRepo = "SpongePowered-snapshots" at "https://repo-new.spongepowered.org/repository/maven-snapshots"
+  final val SpongeRepo = "SpongePowered" at "https://repo-new.spongepowered.org/repository/maven-public"
 
   final val SpongePlugin = sbtspongyinfo.SpongePlugin
 

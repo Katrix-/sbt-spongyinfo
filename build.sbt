@@ -6,7 +6,7 @@ description := "Easier Sponge plugins for SBT"
 
 sbtPlugin := true
 
-resolvers += "SpongePowered-Snapshots" at "https://repo-new.spongepowered.org/repository/maven-snapshots"
+resolvers += "SpongePowered" at "https://repo-new.spongepowered.org/repository/maven-public"
 libraryDependencies += "org.spongepowered.plugin-meta" % "mcmod-info" % "0.6.0.1-20200823.181413-1"
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "2.0.0")
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.10")
